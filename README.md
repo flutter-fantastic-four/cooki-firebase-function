@@ -22,6 +22,5 @@ await FirebaseAuth.instance.signInWithCustomToken(customToken);
 ```
 
 ## 🛠️ 개발 시 주의사항
-admin.json은 절대 커밋하지 마세요 (.gitignore에 추가 필수)
-</bar>
+admin.json은 절대 커밋하지 마세요 (.gitignore에 추가 필수)  
 admin.json 파일은 공유된 slack 이나 firebase 프로젝트 설정에서 재 다운로드 가능합니다.
