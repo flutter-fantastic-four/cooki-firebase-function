@@ -1,12 +1,16 @@
 const { onCall } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const request = require("request-promise"); // requestMe 함수에서 사용하므로 필요
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const serviceAccount = require("./admin.json");
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
 });
+
+const db = getFirestore();
 
 function requestMe(kakaoAccessToken) {
     return request({
@@ -57,3 +61,35 @@ exports.kakaoCustomAuth = onCall({ region: "asia-northeast3" }, (request) => {
         return { custom_token: firebaseToken };
     });
 });
+
+exports.updateRecipeRatingStats = onDocumentWritten(
+    {
+        document: "recipes/{recipeId}/reviews/{reviewId}",
+        region: "asia-northeast3",
+    },
+    async (event) => {
+        const recipeId = event.params.recipeId;
+        const recipeRef = db.collection("recipes").doc(recipeId);
+        const reviewsRef = recipeRef.collection("reviews");
+
+        // 모든 리뷰 가져오기
+        const reviewsSnap = await reviewsRef.get();
+        const ratings = [];
+        reviewsSnap.forEach(doc => {
+            const rating = doc.data().rating;
+            if (typeof rating === "number") ratings.push(rating);
+        });
+
+        const ratingCount = ratings.length;
+        console.log(ratingCount);
+        const avgRating = ratingCount > 0 ? ratings.reduce((a, b) => a + b, 0) / ratingCount : 0;
+        console.log(avgRating);
+        const roundedAvg = Math.round(avgRating * 10) / 10;
+        console.log(roundedAvg);
+
+        await recipeRef.update({
+            ratingCount: ratingCount,
+            ratingSum: roundedAvg,
+        });
+    }
+);
